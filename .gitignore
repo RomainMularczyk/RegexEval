@@ -1,0 +1,10 @@
+# Config
+*.idea/
+*__pycache__
+*.ipynb_checkpoints/
+
+# Notebooks
+*.ipynb
+
+# Folders
+data/
