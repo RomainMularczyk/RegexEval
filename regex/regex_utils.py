@@ -1,4 +1,6 @@
 import re
+import pandas as pd
+import os
 
 
 class RegexEval:
@@ -22,9 +24,11 @@ class RegexEval:
                               "unmatched": int(),
                               "overmatched": int(),
                               "overmatches": list(),
-                              "undermatches": list()} for exp in dict_regexps.keys()}
+                              "overmatches_id": list(),
+                              "undermatches": list(),
+                              "undermatches_id": list()} for exp in dict_regexps.keys()}
 
-    def regex(self, text, label, exp, lower=True):
+    def regex(self, doc_id, text, label, exp, lower=True):
         """Defines a regex and searches for matching patterns.
         Inputs :
         - text : input text [string]
@@ -38,26 +42,42 @@ class RegexEval:
             text = text.lower()
 
         if re.search(regex, text):
-            self.evaluate(True, exp, label, text)
+            self.evaluate(True, doc_id, text, label, exp)
         else:
-            self.evaluate(False, exp, label, text)
+            self.evaluate(False, doc_id, text, label, exp)
 
-    def evaluate(self, is_matched, exp, label, text):
+    def evaluate(self, is_matched, doc_id, text, label, exp):
 
         # True positive
         if exp == label and is_matched is True:
             self.results[exp]["matched"] += 1
         # False positive
-        elif exp == label and is_matched is True:
-            print("False positive.")
+        elif exp != label and is_matched is True:
             self.results[exp]["overmatched"] += 1
             self.results[exp]["overmatches"].append(text)
+            self.results[exp]["overmatches_id"].append(doc_id)
         # False negative
         elif exp == label and is_matched is False:
-            print("False negative.")
             self.results[exp]["unmatched"] += 1
             self.results[exp]["undermatches"].append(text)
+            self.results[exp]["undermatches_id"].append(doc_id)
         # True negative
         else:
             pass
+
+    def export_results(self):
+
+        os.makedirs("../data/export", exist_ok=True)
+
+
+        for exp, values in self.results.items():
+            df_overmatch = pd.DataFrame({"overmatches_id": values["overmatches_id"],
+                               "overmatches": values["overmatches"]})
+
+            df_overmatch.to_csv(os.path.join("../data/export", "overmatch_" + exp + ".csv"), sep=";", encoding="utf-8")
+
+            df_undermatch = pd.DataFrame({"undermatches_id": values["undermatches_id"],
+                                          "undermatches": values["undermatches"]})
+            
+            df_undermatch.to_csv(os.path.join("../data/export", "undermatch_" + exp + ".csv"), sep=";", encoding="utf-8")
 
