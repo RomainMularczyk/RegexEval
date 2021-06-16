@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import ConfusionMatrixDisplay
 
+
 class RegexEval:
     """Defines a series of helpers to build and evaluate regular expressions.
     Inputs :
@@ -88,22 +89,30 @@ class RegexEval:
             self.results[exp]["nomatched"] += 1
 
     def export_results(self):
+        """Exports the regex evaluation results in CSV tables.
+        Each regex gets its own couple of overmatches (False Positives)
+        and undermatches (False Negatives) table.
+        """
 
         os.makedirs("../data/export", exist_ok=True)
 
-
         for exp, values in self.results.items():
             df_overmatch = pd.DataFrame({"overmatches_id": values["overmatches_id"],
-                               "overmatches": values["overmatches"]})
+                               "overmatches": values["overmatches"],
+                               "overmatches_focus": values["overmatches_focus"]})
 
             df_overmatch.to_csv(os.path.join("../data/export", "overmatch_" + exp + ".csv"), sep=";", encoding="utf-8")
 
             df_undermatch = pd.DataFrame({"undermatches_id": values["undermatches_id"],
-                                          "undermatches": values["undermatches"]})
+                                          "undermatches": values["undermatches"],
+                                          "undermatches_focus": values["undermatches_focus"]})
 
             df_undermatch.to_csv(os.path.join("../data/export", "undermatch_" + exp + ".csv"), sep=";", encoding="utf-8")
 
     def plot_confusion_matrix(self, exp):
+        """Plots a confusion matrix that synthesizes the regex matching
+        patterns results.
+        """
         
         data = np.array([[self.results[exp]["matched"], self.results[exp]["unmatched"]],
                          [self.results[exp]["overmatched"], self.results[exp]["nomatched"]]])
