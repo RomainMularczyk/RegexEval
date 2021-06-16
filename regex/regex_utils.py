@@ -100,7 +100,7 @@ class RegexEval:
             self.results[exp]["overmatched"] += 1
             self.results[exp]["overmatches"].append(text)
             try:
-                self.results[exp]["overmatches_focus"].append(text[self.regex_res.span()[0] - 40:self.regex_res.span()[1] + 40])
+                self.results[exp]["overmatches_focus"].append(text[self.regex_res.span()[0] - window:self.regex_res.span()[1] + window])
             except:
                 self.results[exp]["overmatches_focus"].append(0)
             self.results[exp]["overmatches_id"].append(doc_id)
@@ -110,7 +110,7 @@ class RegexEval:
             self.results[exp]["undermatches"].append(text)
             # 
             try:
-                self.results[exp]["undermatches_focus"].append(text[self.regex_res.span()[0] - 40:self.regex_res.span()[1] + 40])
+                self.results[exp]["undermatches_focus"].append(text[self.regex_res.span()[0] - window:self.regex_res.span()[1] + window])
             except:
                 self.results[exp]["undermatches_focus"].append(0)
             self.results[exp]["undermatches_id"].append(doc_id)
