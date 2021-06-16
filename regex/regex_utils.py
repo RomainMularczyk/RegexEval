@@ -1,7 +1,8 @@
-import re
-import pandas as pd
 import os
-
+import re
+import numpy as np
+import pandas as pd
+from sklearn.metrics import ConfusionMatrixDisplay
 
 class RegexEval:
     """Defines a series of helpers to build and evaluate regular expressions.
@@ -24,9 +25,12 @@ class RegexEval:
                               "unmatched": int(),
                               "overmatched": int(),
                               "overmatches": list(),
+                              "overmatches_focus": list(),
                               "overmatches_id": list(),
                               "undermatches": list(),
-                              "undermatches_id": list()} for exp in dict_regexps.keys()}
+                              "undermatches_focus": list(),
+                              "undermatches_id": list(),
+                              "nomatched": int()} for exp in dict_regexps.keys()}
 
     def regex(self, doc_id, text, label, exp, lower=True):
         """Defines a regex and searches for matching patterns.
@@ -40,13 +44,22 @@ class RegexEval:
 
         if lower:
             text = text.lower()
+            
+        # Add a regex result property
+        self.regex_res = re.search(regex, text)
 
-        if re.search(regex, text):
+        if self.regex_res:
             self.evaluate(True, doc_id, text, label, exp)
         else:
             self.evaluate(False, doc_id, text, label, exp)
 
     def evaluate(self, is_matched, doc_id, text, label, exp):
+        """Evaluates a regex and stores different informations.
+        - Matched : How many regex lead to True Positives
+        - Overmatched : How many regex lead to False Positives
+        - Undermatched : How many regex lead to False Negatives
+        - Nomatched : How many regex lead to True Negatives
+        """
 
         # True positive
         if exp == label and is_matched is True:
@@ -55,15 +68,24 @@ class RegexEval:
         elif exp != label and is_matched is True:
             self.results[exp]["overmatched"] += 1
             self.results[exp]["overmatches"].append(text)
+            try:
+                self.results[exp]["overmatches_focus"].append(text[self.regex_res.span()[0] - 10:self.regex_res.span()[1]])
+            except:
+                self.results[exp]["overmatches_focus"].append(0)
             self.results[exp]["overmatches_id"].append(doc_id)
         # False negative
         elif exp == label and is_matched is False:
             self.results[exp]["unmatched"] += 1
             self.results[exp]["undermatches"].append(text)
+            # 
+            try:
+                self.results[exp]["undermatches_focus"].append(text[self.regex_res.span()[0] - 10:self.regex_res.span()[1]])
+            except:
+                self.results[exp]["undermatches_focus"].append(0)
             self.results[exp]["undermatches_id"].append(doc_id)
         # True negative
         else:
-            pass
+            self.results[exp]["nomatched"] += 1
 
     def export_results(self):
 
@@ -78,6 +100,12 @@ class RegexEval:
 
             df_undermatch = pd.DataFrame({"undermatches_id": values["undermatches_id"],
                                           "undermatches": values["undermatches"]})
-            
+
             df_undermatch.to_csv(os.path.join("../data/export", "undermatch_" + exp + ".csv"), sep=";", encoding="utf-8")
 
+    def plot_confusion_matrix(self, exp):
+        
+        data = np.array([[self.results[exp]["matched"], self.results[exp]["unmatched"]],
+                         [self.results[exp]["overmatched"], self.results[exp]["nomatched"]]])
+        
+        ConfusionMatrixDisplay(data).plot()
