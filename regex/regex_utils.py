@@ -23,16 +23,17 @@ class RegexEval:
     def __init__(self, dict_regexps:Dict) -> None:
         self.regexps = {exp: regex for exp, regex in dict_regexps.items()}
         self.results = {exp: {"matched": int(),
-                              "unmatched": int(),
                               "overmatched": int(),
                               "overmatches": list(),
                               "overmatches_focus": list(),
+                              "overmatches_actual_label": list(),
                               "overmatches_id": list(),
+                              "undermatched": int(),
                               "undermatches": list(),
                               "undermatches_focus": list(),
+                              "undermatches_actual_label": list(),
                               "undermatches_id": list(),
-                              "nomatched": int(),
-                              "actual_label": list()} for exp in dict_regexps.keys()}
+                              "nomatched": int()} for exp in dict_regexps.keys()}
 
     def regex(self, doc_id:int, text:str, label:str, exp:str, lower=True) -> None:
         """Defines a regex and searches for matching patterns.
@@ -99,6 +100,7 @@ class RegexEval:
         elif exp != label and is_matched is True:
             self.results[exp]["overmatched"] += 1
             self.results[exp]["overmatches"].append(text)
+            self.results[exp]["overmatches_actual_label"].append(label)
             try:
                 self.results[exp]["overmatches_focus"].append(text[self.regex_res.span()[0] - window:self.regex_res.span()[1] + window])
             except:
@@ -106,9 +108,9 @@ class RegexEval:
             self.results[exp]["overmatches_id"].append(doc_id)
         # False negative
         elif exp == label and is_matched is False:
-            self.results[exp]["unmatched"] += 1
+            self.results[exp]["undermatched"] += 1
             self.results[exp]["undermatches"].append(text)
-            # 
+            self.results[exp]["undermatches_actual_label"].append(label)
             try:
                 self.results[exp]["undermatches_focus"].append(text[self.regex_res.span()[0] - window:self.regex_res.span()[1] + window])
             except:
@@ -117,7 +119,7 @@ class RegexEval:
         # True negative
         else:
             self.results[exp]["nomatched"] += 1
-        self.results[exp]["actual_label"].append(label)
+        
 
         
     def export_results(self) -> None:
@@ -131,13 +133,15 @@ class RegexEval:
         for exp, values in self.results.items():
             df_overmatch = pd.DataFrame({"overmatches_id": values["overmatches_id"],
                                "overmatches": values["overmatches"],
-                               "overmatches_focus": values["overmatches_focus"]})
+                               "overmatches_focus": values["overmatches_focus"],
+                               "overmatches_actual_label": values["overmatches_actual_label"]})
 
             df_overmatch.to_csv(os.path.join("../data/export", "overmatch_" + exp + ".csv"), sep=";", encoding="utf-8")
 
             df_undermatch = pd.DataFrame({"undermatches_id": values["undermatches_id"],
                                           "undermatches": values["undermatches"],
-                                          "undermatches_focus": values["undermatches_focus"]})
+                                          "undermatches_focus": values["undermatches_focus"],
+                                          "undermatches_actual_label": values["undermatches_actual_label"]})
 
             df_undermatch.to_csv(os.path.join("../data/export", "undermatch_" + exp + ".csv"), sep=";", encoding="utf-8")
 
@@ -152,7 +156,34 @@ class RegexEval:
             Key representing the information captured by the associated regular expression.
         """
         
-        data = np.array([[self.results[exp]["matched"], self.results[exp]["unmatched"]],
+        data = np.array([[self.results[exp]["matched"], self.results[exp]["undermatched"]],
                          [self.results[exp]["overmatched"], self.results[exp]["nomatched"]]])
         
         ConfusionMatrixDisplay(data).plot()
+    
+    def calculate_metrics(self, exp:str, percentage:bool=True) -> Dict:
+        """Returns metrics to evaluate the sensibility and specificity of a regex.
+        
+        Parameters :
+        ------------
+        exp : str
+            Key representing the information captured by the associated regular expression.
+            
+        Returns :
+        ---------
+        total : int
+            The total number of documents that should be matched.
+        dict
+            A dictionary containing metrics concerning sensibility and specificity.
+        """
+        
+        total = self.results[exp]["matched"] + self.results[exp]["undermatched"]
+        
+        if percentage == True:
+            return total, {"TP": self.results[exp]["matched"] / total * 100,
+                           "FN": self.results[exp]["undermatched"] / total * 100}
+        else:
+            return total, {"TP": self.results[exp]["matched"],
+                           "FP": self.results[exp]["overmatched"],
+                           "TN": self.results[exp]["nomatched"],
+                           "FN": self.results[exp]["undermatched"]}

@@ -5,6 +5,10 @@
 
 # Notebooks
 *.ipynb
+!regex_cat_mariage.ipynb
+
+# Markdown
+*Segmentation sémantique.md
 
 # Folders
 data/
